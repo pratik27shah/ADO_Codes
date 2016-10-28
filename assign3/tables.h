@@ -24,6 +24,7 @@ typedef struct Value {
 typedef struct RID {
   int page;
   int slot;
+  int indicate_tomb_stone;
 } RID;
 
 typedef struct Record

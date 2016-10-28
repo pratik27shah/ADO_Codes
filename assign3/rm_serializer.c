@@ -151,20 +151,24 @@ serializeSchema(Schema *schema)
 char * 
 serializeRecord(Record *record, Schema *schema)
 {
+  
   VarString *result;
   MAKE_VARSTRING(result);
   int i;
-  
+ 
   APPEND(result, "[%i-%i] (", record->id.page, record->id.slot);
 
   for(i = 0; i < schema->numAttr; i++)
     {
+		 
       APPEND_STRING(result, serializeAttr (record, schema, i));
-      APPEND(result, "%s", (i == 0) ? "" : ",");
+     APPEND(result, "%s", (i == (schema->numAttr-1)) ? "" : ",");
+  //  temp=RETURN_STRING(result);
+      
     }
   
   APPEND_STRING(result, ")");
-
+ // printf("\n result :: %s \n",result);
   RETURN_STRING(result);
 }
 
@@ -279,6 +283,105 @@ stringToValue(char *val)
   return result;
 }
 
+
+/*
+Schema *deserializeSchema(char *schema_str,char *prminfo_data){
+	//printf("\n Into Deserialize \n");
+    Schema *schema = (Schema *)malloc(sizeof(Schema));
+    int i, j,deserial_numAttr;
+	char *temp_str1,*temp_str2;
+
+     temp_str1 = strtok (schema_data,"<");
+    temp_str1 = strtok (NULL,">");
+
+    deserial_numAttr = strtol(temp_str1, temp_str2, 10);
+    schema->numAttr= deserial_numAttr;
+
+    schema->attrNames=(char **)malloc(sizeof(char*)*deserial_numAttr);
+    schema->dataTypes=(DataType *)malloc(sizeof(DataType)*deserial_numAttr);
+    schema->typeLength=(int *)malloc(sizeof(int)*deserial_numAttr);
+    char* str_ref[schema->numAttr];
+    s1 = strtok (NULL,"(");
+
+    for(i=0; i<numAttr; ++i){
+        s1 = strtok (NULL,": ");
+        schema->attrNames[i]=(char *)calloc(strlen(s1), sizeof(char));
+        strcpy(schema->attrNames[i], s1);
+
+        if(i == numAttr-1){
+            s1 = strtok (NULL,") ");
+        }
+        else{
+            s1 = strtok (NULL,", ");
+        }
+
+        str_ref[i] = (char *)calloc(strlen(s1), sizeof(char));
+
+        if (strcmp(s1, "INT") == 0){
+            schema->dataTypes[i] = DT_INT;
+            schema->typeLength[i] = 0;
+        }
+        else if (strcmp(s1, "FLOAT") == 0){
+            schema->dataTypes[i] = DT_FLOAT;
+            schema->typeLength[i] = 0;
+        }
+        else if (strcmp(s1, "BOOL") == 0){
+            schema->dataTypes[i] = DT_BOOL;
+            schema->typeLength[i] = 0;
+        }
+        else{
+            strcpy(str_ref[i], s1);
+        }
+    }
+
+    int keyFlag = 0, keySize = 0;
+    char* keyAttrs[numAttr];
+
+    if((s1 = strtok (NULL,"(")) != NULL){
+        s1 = strtok (NULL,")");
+        char *key = strtok (s1,", ");
+
+        while(key != NULL){
+            keyAttrs[keySize] = (char *)malloc(strlen(key)*sizeof(char));
+            strcpy(keyAttrs[keySize], key);
+            keySize++;
+            key = strtok (NULL,", ");
+        }
+        keyFlag = 1;
+    }
+
+    char *temp3;
+    for(i=0; i<numAttr; ++i){
+        if(strlen(str_ref[i]) > 0){
+            temp3 = (char *) malloc(sizeof(char)*strlen(str_ref[i]));
+            memcpy(temp3, str_ref[i], strlen(str_ref[i]));
+            schema->dataTypes[i] = DT_STRING;
+            s1 = strtok (temp3,"[");
+            s1 = strtok (NULL,"]");
+            schema->typeLength[i] = strtol(s1, &s2, 10);
+            free(temp3);
+            free(str_ref[i]);
+        }
+    }
+
+    if(keyFlag == 1){
+        schema->keyAttrs=(int *)malloc(sizeof(int)*keySize);
+        schema->keySize = keySize;
+        for(i=0; i<keySize; ++i){
+            for(j=0; j<numAttr; ++j){
+                if(strcmp(keyAttrs[i], schema->attrNames[j]) == 0){
+                    schema->keyAttrs[i] = j;
+                    free(keyAttrs[i]);
+                }
+            }
+        }
+    }
+    printf("1");
+    return schema;
+}
+
+
+*/
 
 RC 
 attrOffset (Schema *schema, int attrNum, int *result)

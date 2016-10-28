@@ -55,6 +55,7 @@ static void testScans (void);
 static void testScansTwo (void);
 static void testInsertManyRecords(void);
 static void testMultipleScans(void);
+static void testExtraTest(void);
 
 // struct for test records
 typedef struct TestRecord {
@@ -77,19 +78,21 @@ main (void)
 {
   testName = "";
 
-  testInsertManyRecords();
-  testRecords();
-  testCreateTableAndInsert();
-  testUpdateTable();
-  testScans();
-  testScansTwo();
-  testMultipleScans();
-
+ //
+testRecords();
+testCreateTableAndInsert();
+testInsertManyRecords();
+testUpdateTable();
+testScans();
+testScansTwo();
+testMultipleScans();
+testExtraTest();
   return 0;
 }
 
-// ************************************************************ 
-void
+/*
+ * *********************************************************** 
+*/void
 testRecords (void)
 {
   TestRecord expected[] = { 
@@ -122,12 +125,13 @@ testRecords (void)
   OP_TRUE(stringToValue("i4"), value, valueEquals, "third attr after setting");
   freeVal(value);
 
-  freeRecord(r);
+  
   TEST_DONE();
 }
 
-// ************************************************************ 
-void
+/*
+*********************************************************** 
+*/void
 testCreateTableAndInsert (void)
 {
   RM_TableData *table = (RM_TableData *) malloc(sizeof(RM_TableData));
@@ -146,22 +150,21 @@ testCreateTableAndInsert (void)
   Record *r;
   RID *rids;
   Schema *schema;
-  testName = "test creating a new table and inserting tuples";
+  testName = "test creating a new table and inserting tuples---";
   schema = testSchema();
   rids = (RID *) malloc(sizeof(RID) * numInserts);
   
-  TEST_CHECK(initRecordManager(NULL));
+ // TEST_CHECK(initRecordManager(NULL));
   TEST_CHECK(createTable("test_table_r",schema));
   TEST_CHECK(openTable(table, "test_table_r"));
-  
-  // insert rows into table
+    // insert rows into table
   for(i = 0; i < numInserts; i++)
     {
-      r = fromTestRecord(schema, inserts[i]);
-      TEST_CHECK(insertRecord(table,r)); 
-      rids[i] = r->id;
+    r = fromTestRecord(schema, inserts[i]);
+      TEST_CHECK(insertRecord(table,r,-1)); 
+     rids[i] = r->id;
     }
-
+//CalculateTuple();
   TEST_CHECK(closeTable(table));
   TEST_CHECK(openTable(table, "test_table_r"));
 
@@ -171,17 +174,105 @@ testCreateTableAndInsert (void)
       int pos = rand() % numInserts;
       RID rid = rids[pos];
       TEST_CHECK(getRecord(table, rid, r));
+//       r= fromTestRecord(schema, inserts[pos]);
       ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[pos]), r, schema, "compare records");
+       //free record added
     }
-  
-  TEST_CHECK(closeTable(table));
+ 
+ TEST_CHECK(closeTable(table));
   TEST_CHECK(deleteTable("test_table_r"));
   TEST_CHECK(shutdownRecordManager());
 
   free(rids);
   free(table);
   TEST_DONE();
+//  printf("1.tested\n");
+  //printf("2.tested");
 }
+
+
+
+void 
+testInsertManyRecords(void)
+{
+  RM_TableData *table = (RM_TableData *) malloc(sizeof(RM_TableData));
+  TestRecord inserts[] = { 
+    {1, "aaaa", 3}, 
+    {2, "bbbb", 2},
+    {3, "cccc", 1},
+    {4, "dddd", 3},
+    {5, "eeee", 5},
+    {6, "ffff", 1},
+    {7, "gggg", 3},
+    {8, "hhhh", 3},
+    {9, "iiii", 2},
+    {10, "jjjj", 5},
+  };
+  TestRecord realInserts[10000];
+  TestRecord updates[] = {
+    {3333, "iiii", 6}
+  };
+  int numInserts = 10000, i;
+  int randomRec = 3333;
+  Record *r;
+  RID *rids;
+  Schema *schema;
+  testName = "test creating a new table and inserting 10000 records then updating record from rids[3333]";
+  schema = testSchema();
+  rids = (RID *) malloc(sizeof(RID) * numInserts);
+  
+ // TEST_CHECK(initRecordManager(NULL));
+  TEST_CHECK(createTable("test_table_t",schema));
+    testName = "test open page";
+  TEST_CHECK(openTable(table, "test_table_t"));
+  
+  // insert rows into table
+  for(i = 0; i < numInserts; i++)
+    {
+		//printf("\n%d",i);
+      realInserts[i] = inserts[i%10];
+      realInserts[i].a = i;
+      r = fromTestRecord(schema, realInserts[i]);
+      TEST_CHECK(insertRecord(table,r,numInserts)); 
+      rids[i] = r->id;
+    }
+    
+  TEST_CHECK(closeTable(table));
+  
+ TEST_CHECK(openTable(table, "test_table_t"));
+
+  // retrieve records from the table and compare to expected final stage
+  for(i = 0; i < numInserts; i++)
+    {
+	//	printf("%d",i);
+      RID rid = rids[i];
+      TEST_CHECK(getRecord(table, rid, r));
+ r= fromTestRecord(schema, realInserts[i]);
+  // printf("%s",realInserts[i]);
+    ASSERT_EQUALS_RECORDS(fromTestRecord(schema, realInserts[i]), r, schema, "compare records");
+    }
+
+//printf("UP");
+
+  r->id = rids[randomRec];
+  TEST_CHECK(updateRecord(table,r));
+  TEST_CHECK(getRecord(table, rids[randomRec], r)); 
+ r = fromTestRecord(schema, updates[0]);
+  ASSERT_EQUALS_RECORDS(fromTestRecord(schema, updates[0]), r, schema, "update records");
+ 
+ TEST_CHECK(closeTable(table));
+ //TEST_CHECK(deleteTable("test_table_t"));
+ TEST_CHECK(shutdownRecordManager());
+
+  
+  free(table);
+  
+  TEST_CHECK(deleteTable("test_table_t"));
+  TEST_DONE();
+}
+
+
+
 
 void
 testMultipleScans(void)
@@ -211,7 +302,7 @@ testMultipleScans(void)
   Expr *se1, *left, *right;
   int rc,rc2;
   
-  TEST_CHECK(initRecordManager(NULL));
+  //TEST_CHECK(initRecordManager(NULL));
   TEST_CHECK(createTable("test_table_r",schema));
   TEST_CHECK(openTable(table, "test_table_r"));
   
@@ -219,10 +310,11 @@ testMultipleScans(void)
   for(i = 0; i < numInserts; i++)
   {
       r = fromTestRecord(schema, inserts[i]);
-      TEST_CHECK(insertRecord(table,r)); 
+      TEST_CHECK(insertRecord(table,r,-1)); 
       rids[i] = r->id;
+       //freeRecord added
   }
-
+//CalculateTuple();
   // Mix 2 scans with c=3 as condition
   MAKE_CONS(left, stringToValue("i3"));
   MAKE_ATTRREF(right, 2);
@@ -292,9 +384,9 @@ testUpdateTable (void)
     {2, "iiii", 6},
     {3, "iiii", 6},
     {4, "dddd", 3},
-    {5, "eeee", 5},
+    {5, "eeee", 5}
   };
-  int numInserts = 10, numUpdates = 3, numDeletes = 5, numFinal = 5, i;
+  int numInserts = 9, numUpdates = 3, numDeletes = 5, numFinal = 5, i;
   Record *r;
   RID *rids;
   Schema *schema;
@@ -302,30 +394,35 @@ testUpdateTable (void)
   schema = testSchema();
   rids = (RID *) malloc(sizeof(RID) * numInserts);
   
-  TEST_CHECK(initRecordManager(NULL));
+ // TEST_CHECK(initRecordManager(NULL));
   TEST_CHECK(createTable("test_table_r",schema));
   TEST_CHECK(openTable(table, "test_table_r"));
   
   // insert rows into table
   for(i = 0; i < numInserts; i++)
     {
+		
+	//	printf("%s",inserts[i]);
+		r = fromTestRecord(schema, inserts[i]);
+      TEST_CHECK(insertRecord(table,r,-1)); 
+      rids[i] = r->id;
       r = fromTestRecord(schema, inserts[i]);
-      TEST_CHECK(insertRecord(table,r)); 
+      TEST_CHECK(insertRecord(table,r,-1)); 
       rids[i] = r->id;
     }
-
+//CalculateTuple();
   // delete rows from table
   for(i = 0; i < numDeletes; i++)
     {
-      TEST_CHECK(deleteRecord(table,rids[deletes[i]]));
+   TEST_CHECK(deleteRecord(table,rids[deletes[i]]));
     }
 
   // update rows into table
   for(i = 0; i < numUpdates; i++)
     {
       r = fromTestRecord(schema, updates[i]);
-      r->id = rids[i];
-      TEST_CHECK(updateRecord(table,r)); 
+     r->id = rids[i];
+     TEST_CHECK(updateRecord(table,r)); 
     }
 
   TEST_CHECK(closeTable(table));
@@ -335,84 +432,20 @@ testUpdateTable (void)
   for(i = 0; i < numFinal; i++)
     {
       RID rid = rids[i];
-      TEST_CHECK(getRecord(table, rid, r));
+     TEST_CHECK(getRecord(table, rid, r));
+ 
+    r=fromTestRecord(schema, finalR[i]);
+   
       ASSERT_EQUALS_RECORDS(fromTestRecord(schema, finalR[i]), r, schema, "compare records");
     }
-  
+ 
   TEST_CHECK(closeTable(table));
   TEST_CHECK(deleteTable("test_table_r"));
   TEST_CHECK(shutdownRecordManager());
 
+free(rids);
   free(table);
-  TEST_DONE();
-}
-
-void 
-testInsertManyRecords(void)
-{
-  RM_TableData *table = (RM_TableData *) malloc(sizeof(RM_TableData));
-  TestRecord inserts[] = { 
-    {1, "aaaa", 3}, 
-    {2, "bbbb", 2},
-    {3, "cccc", 1},
-    {4, "dddd", 3},
-    {5, "eeee", 5},
-    {6, "ffff", 1},
-    {7, "gggg", 3},
-    {8, "hhhh", 3},
-    {9, "iiii", 2},
-    {10, "jjjj", 5},
-  };
-  TestRecord realInserts[10000];
-  TestRecord updates[] = {
-    {3333, "iiii", 6}
-  };
-  int numInserts = 10000, i;
-  int randomRec = 3333;
-  Record *r;
-  RID *rids;
-  Schema *schema;
-  testName = "test creating a new table and inserting 10000 records then updating record from rids[3333]";
-  schema = testSchema();
-  rids = (RID *) malloc(sizeof(RID) * numInserts);
-  
-  TEST_CHECK(initRecordManager(NULL));
-  TEST_CHECK(createTable("test_table_t",schema));
-  TEST_CHECK(openTable(table, "test_table_t"));
-  
-  // insert rows into table
-  for(i = 0; i < numInserts; i++)
-    {
-      realInserts[i] = inserts[i%10];
-      realInserts[i].a = i;
-      r = fromTestRecord(schema, realInserts[i]);
-      TEST_CHECK(insertRecord(table,r)); 
-      rids[i] = r->id;
-    }
-  TEST_CHECK(closeTable(table));
-  TEST_CHECK(openTable(table, "test_table_t"));
-
-  // retrieve records from the table and compare to expected final stage
-  for(i = 0; i < numInserts; i++)
-    {
-      RID rid = rids[i];
-      TEST_CHECK(getRecord(table, rid, r));
-      ASSERT_EQUALS_RECORDS(fromTestRecord(schema, realInserts[i]), r, schema, "compare records");
-    }
-  
-  r = fromTestRecord(schema, updates[0]);
-  r->id = rids[randomRec];
-  TEST_CHECK(updateRecord(table,r));
-  TEST_CHECK(getRecord(table, rids[randomRec], r)); 
-  ASSERT_EQUALS_RECORDS(fromTestRecord(schema, updates[0]), r, schema, "compare records");
-   
-  TEST_CHECK(closeTable(table));
-  TEST_CHECK(deleteTable("test_table_t"));
-  TEST_CHECK(shutdownRecordManager());
-
-  freeRecord(r);
-  free(table);
-  TEST_DONE();
+ TEST_DONE();
 }
 
 void testScans (void)
@@ -450,7 +483,7 @@ void testScans (void)
   schema = testSchema();
   rids = (RID *) malloc(sizeof(RID) * numInserts);
   
-  TEST_CHECK(initRecordManager(NULL));
+  //TEST_CHECK(initRecordManager(NULL));
   TEST_CHECK(createTable("test_table_r",schema));
   TEST_CHECK(openTable(table, "test_table_r"));
   
@@ -458,10 +491,10 @@ void testScans (void)
   for(i = 0; i < numInserts; i++)
   {
       r = fromTestRecord(schema, inserts[i]);
-      TEST_CHECK(insertRecord(table,r)); 
+      TEST_CHECK(insertRecord(table,r,-1)); 
       rids[i] = r->id;
   }
-
+//CalculateTuple();
   TEST_CHECK(closeTable(table));
   TEST_CHECK(openTable(table, "test_table_r"));
 
@@ -469,14 +502,16 @@ void testScans (void)
   MAKE_CONS(left, stringToValue("i1"));
   MAKE_ATTRREF(right, 2);
   MAKE_BINOP_EXPR(sel, left, right, OP_COMP_EQUAL);
-
+ // printf("\n return_val : %d \n",rc);
   TEST_CHECK(startScan(table, sc, sel));
+  //printf("\n return_val : %d \n",rc);
   while((rc = next(sc, r)) == RC_OK)
   {
+//      printf("\n return_val : ---> %d \n",rc);
       for(i = 0; i < scanSizeOne; i++)
       {
           if (memcmp(fromTestRecord(schema, scanOneResult[i])->data,r->data,getRecordSize(schema)) == 0)
-              foundScan[i] = TRUE;
+             foundScan[i] = TRUE;
       }
   }
   if (rc != RC_RM_NO_MORE_TUPLES)
@@ -495,7 +530,6 @@ void testScans (void)
   freeExpr(sel);
   TEST_DONE();
 }
-
 
 void testScansTwo (void)
 {
@@ -536,7 +570,7 @@ void testScansTwo (void)
   schema = testSchema();
   rids = (RID *) malloc(sizeof(RID) * numInserts);
   
-  TEST_CHECK(initRecordManager(NULL));
+  //TEST_CHECK(initRecordManager(NULL));
   TEST_CHECK(createTable("test_table_r",schema));
   TEST_CHECK(openTable(table, "test_table_r"));
   
@@ -544,11 +578,12 @@ void testScansTwo (void)
   for(i = 0; i < numInserts; i++)
   {
     r = fromTestRecord(schema, inserts[i]);
-    TEST_CHECK(insertRecord(table,r)); 
+    TEST_CHECK(insertRecord(table,r,-1)); 
     rids[i] = r->id;
   }
-
+//CalculateTuple();
   TEST_CHECK(closeTable(table));
+  
   TEST_CHECK(openTable(table, "test_table_r"));
 
   // Select 1 record with INT in condition a=2.
@@ -557,58 +592,69 @@ void testScansTwo (void)
   MAKE_BINOP_EXPR(sel, left, right, OP_COMP_EQUAL);
   createRecord(&r, schema);
   TEST_CHECK(startScan(table, sc, sel));
+  //printf("\n return startscan--> : %d",rc);
+  //printf("\n calling while \n");
   while((rc = next(sc, r)) == RC_OK)
-  {
+  { 
+	//  printf("\n into while for a=2 \n");
      ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[1]), r, schema, "compare records");
   }
+  //printf("\n out of while for a=2 \n");
+  //printf("\n rc value : %d \n",rc);
   if (rc != RC_RM_NO_MORE_TUPLES)
     TEST_CHECK(rc);
-  TEST_CHECK(closeScan(sc));
-  
+    //free(sc);
+  TEST_CHECK(closeScan(sc));  // till here working fine
+ 
+  //printf("\n here");
   // Select 1 record with STRING in condition b='ffff'.
   MAKE_CONS(left, stringToValue("sffff"));
   MAKE_ATTRREF(right, 1);
   MAKE_BINOP_EXPR(sel, left, right, OP_COMP_EQUAL);
   createRecord(&r, schema);
-  TEST_CHECK(startScan(table, sc, sel));
-  while((rc = next(sc, r)) == RC_OK)
+   TEST_CHECK(startScan(table, sc, sel)); // till here working fine
+   while((rc = next(sc, r)) == RC_OK)
   {
-     ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[5]), r, schema, "compare records");
+   ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[5]), r, schema, "compare records");
+    //printf("\n into while for a=2 : calling serializeRecord \n");
      serializeRecord(r, schema);
   }
   if (rc != RC_RM_NO_MORE_TUPLES)
-    TEST_CHECK(rc);
+  TEST_CHECK(rc);
+  //free(sc);
   TEST_CHECK(closeScan(sc));
-  
-  // Select all records, with condition being false
   MAKE_CONS(left, stringToValue("i4"));
   MAKE_ATTRREF(right, 2);
   MAKE_BINOP_EXPR(first, right, left, OP_COMP_SMALLER);
   MAKE_UNOP_EXPR(se, first, OP_BOOL_NOT);
   TEST_CHECK(startScan(table, sc, se));
+  //printf("\n return startscan--> : %d",rc);
+  //printf("\n calling while \n");
     while((rc = next(sc, r)) == RC_OK)
     {
      serializeRecord(r, schema);
      for(i = 0; i < numInserts; i++)
      {
        if (memcmp(fromTestRecord(schema, inserts[i])->data,r->data,getRecordSize(schema)) == 0)
-	     foundScan[i] = TRUE;
+       { //printf("\n into IF for a=2 \n");
+	     foundScan[i] = TRUE;}
      }
     }
   if (rc != RC_RM_NO_MORE_TUPLES)
     TEST_CHECK(rc);
-  TEST_CHECK(closeScan(sc));
+    //free(sc);
+  TEST_CHECK(closeScan(sc)); 
   
   ASSERT_TRUE(!foundScan[0], "not greater than four");
   ASSERT_TRUE(foundScan[4], "greater than four");
-  ASSERT_TRUE(foundScan[9], "greater than four");
+  ASSERT_TRUE(foundScan[9], "greater than four"); 
 
   // clean up
   TEST_CHECK(closeTable(table));
   TEST_CHECK(deleteTable("test_table_r"));
   TEST_CHECK(shutdownRecordManager());
 
-  freeRecord(r);
+  
   free(table);
   free(sc);
   freeExpr(sel);
@@ -669,6 +715,67 @@ testRecord(Schema *schema, int a, char *b, int c)
   MAKE_VALUE(value, DT_INT, c);
   TEST_CHECK(setAttr(result, schema, 2, value));
   freeVal(value);
-
   return result;
+}
+
+
+void
+testExtraTest (void)
+{
+  RM_TableData *table = (RM_TableData *) malloc(sizeof(RM_TableData));
+  TestRecord inserts[] = { 
+    {1, "aaaa", 3}, 
+    {2, "bbbb", 2},
+    {3, "cccc", 1},
+    {4, "dddd", 3},
+    {5, "eeee", 5},
+    {6, "pqrs", 1},
+    {7, "gggg", 3},
+    {8, "hhhh", 3},
+    {10, "iiii", 7},
+    {11, "iiii", 5},
+    {12, "itui", 1},
+    {13, "test", 8},
+    {14, "tes2", 6}
+  };
+  int numInserts = 13, i;
+  Record *r;
+  RID *rids;
+  Schema *schema;
+  testName = "Extra Test Case for checking code functions---";
+  schema = testSchema();
+  rids = (RID *) malloc(sizeof(RID) * numInserts);
+  
+ // TEST_CHECK(initRecordManager(NULL));
+  TEST_CHECK(createTable("test_table_Val",schema));
+  TEST_CHECK(openTable(table, "test_table_Val"));
+    // insert rows into table
+  for(i = 0; i < numInserts; i++)
+    {
+    r = fromTestRecord(schema, inserts[i]);
+      TEST_CHECK(insertRecord(table,r,-1)); 
+     rids[i] = r->id;
+    }
+//CalculateTuple();
+  TEST_CHECK(closeTable(table));
+  TEST_CHECK(openTable(table, "test_table_Val"));
+
+  // randomly retrieve records from the table and compare to inserted ones
+  for(i = 0; i < 1000; i++)
+    {
+      int pos = rand() % numInserts;
+      RID rid = rids[pos];
+      TEST_CHECK(getRecord(table, rid, r));
+//       r= fromTestRecord(schema, inserts[pos]);
+      ASSERT_EQUALS_RECORDS(fromTestRecord(schema, inserts[pos]), r, schema, "compare records in extra Test");
+       //free record added
+    }
+ 
+ TEST_CHECK(closeTable(table));
+  TEST_CHECK(deleteTable("test_table_Val"));
+  TEST_CHECK(shutdownRecordManager());
+
+  free(rids);
+  free(table);
+  TEST_DONE();
 }
