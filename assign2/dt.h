@@ -8,7 +8,5 @@
     #define false 0
 #endif
 
-#define TRUE true
-#define FALSE false
 
 #endif // DT_H
